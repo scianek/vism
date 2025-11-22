@@ -1,0 +1,20 @@
+[project]
+name = "vism"
+version = "0.1.0"
+description = "Semantic image search using DINOv2 embeddings and FAISS"
+authors = [{ name = "Mateusz Ścianek", email = "scianek@protonmail.com" }]
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.4.0,<3.0.0",
+    "torchvision>=0.19.0,<0.20.0",
+    "pillow>=10.0.0,<11.0.0",
+    "tqdm>=4.66.0,<5.0.0",
+    "faiss-cpu>=1.8.0,<2.0.0",
+]
+
+[project.scripts]
+vism = "vism.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
