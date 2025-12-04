@@ -5,7 +5,7 @@ from tqdm import tqdm
 from .images import find_images_recursive, load_image
 from .embeddings import load_model, encode_image, encode_images
 from .search import build_index, search_items
-from .cache import cache_embedding, load_cached_embedding
+from .cache import cache_embeddings, load_cached_embeddings
 
 
 def main():
@@ -24,31 +24,33 @@ def main():
 
     embeddings = []
     batch_size = 64
-    cache_hits = 0
 
-    for i in tqdm(range(0, len(image_paths), batch_size), desc="Processing images"):
-        batch_paths = image_paths[i : i + batch_size]
-        cached_items = []
-        uncached_paths = []
+    print("Loading cached embeddings...")
+    cached_embeddings = load_cached_embeddings(
+        image_paths,
+        model_name,
+    )
+    cache_hits = len(cached_embeddings)
+    print(f"Cache hits: {cache_hits}/{len(image_paths)}")
 
-        for path in batch_paths:
-            cached = load_cached_embedding(path, model_name)
-            if cached is not None:
-                cached_items.append(cached)
-            else:
-                uncached_paths.append(path)
+    uncached_paths = [p for p in image_paths if p not in cached_embeddings]
+    embeddings.extend(
+        cached_embeddings[p] for p in image_paths if p in cached_embeddings
+    )
 
-        embeddings.extend(cached_items)
-        cache_hits += len(cached_items)
-
-        if uncached_paths:
-            imgs = [load_image(path) for path in uncached_paths]
+    if uncached_paths:
+        print(f"Processing {len(uncached_paths)} uncached images...")
+        for i in tqdm(range(0, len(uncached_paths), batch_size), desc="Encoding"):
+            batch_paths = uncached_paths[i : i + batch_size]
+            imgs = [load_image(path) for path in batch_paths]
             batch_embeddings = encode_images(imgs, model)
             embeddings.extend(batch_embeddings)
-            for emb in batch_embeddings:
-                cache_embedding(emb, model_name)
+            cache_embeddings(batch_embeddings, model_name)
 
-    print(f"Cache hits: {cache_hits}/{len(image_paths)}")
+    path_to_embedding = {emb.path: emb for emb in embeddings}
+    embeddings = [path_to_embedding[p] for p in image_paths]
+
+    print("Building search index...")
     index = build_index(embeddings)
 
     print("Encoding query image...")
