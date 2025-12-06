@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 from typing import List
 from .types import ImageEmbedding, SearchResult
 from .cache import load_cached_embeddings, cache_embeddings
@@ -24,7 +25,11 @@ def run_search_pipeline(
     index = build_index(embeddings)
 
     print("Encoding query image...")
-    query_img = load_image(query)
+    try:
+        query_img = load_image(query)
+    except Exception as e:
+        print(f"Failed to load query image: {e}")
+        sys.exit(1)
     query_embedding = encode_image(query_img, model)
     return search_items(index, query_embedding, embeddings, k=k)
 
@@ -54,10 +59,19 @@ def get_or_compute_embeddings(
         ):
             batch_indices = uncached_indices[batch_start : batch_start + batch_size]
             batch_paths = [image_paths[i] for i in batch_indices]
-            imgs = [load_image(path) for path in batch_paths]
-            batch_embeddings = encode_images(imgs, model)
-            for idx, emb in zip(batch_indices, batch_embeddings):
-                embeddings[idx] = emb
-            cache_embeddings(batch_embeddings, model_name)
+            imgs = []
+            valid_indices = []
+            for idx, path in zip(batch_indices, batch_paths):
+                try:
+                    img = load_image(path)
+                    imgs.append(img)
+                    valid_indices.append(idx)
+                except Exception as e:
+                    print(f"Failed to load image {path}: {e}")
+            if imgs:
+                batch_embeddings = encode_images(imgs, model)
+                for idx, emb in zip(valid_indices, batch_embeddings):
+                    embeddings[idx] = emb
+                cache_embeddings(batch_embeddings, model_name)
 
     return [emb for emb in embeddings if emb is not None]
