@@ -16,7 +16,7 @@ def _get_cache_db(model_name: str) -> Path:
 def _compute_cache_key(path: Path) -> str:
     stat = path.stat()
     key_string = f"{path.absolute()}:{stat.st_size}:{stat.st_mtime_ns}"
-    return hashlib.sha256(key_string.encode()).hexdigest()
+    return hashlib.sha256(key_string.encode(errors="surrogateescape")).hexdigest()
 
 
 def _init_db(db_path: Path) -> sqlite3.Connection:
@@ -25,13 +25,12 @@ def _init_db(db_path: Path) -> sqlite3.Connection:
         """
         CREATE TABLE IF NOT EXISTS embeddings (
             cache_key TEXT PRIMARY KEY,
-            path TEXT NOT NULL,
+            path BLOB NOT NULL,
             embedding BLOB NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """
     )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_path ON embeddings(path)")
     conn.commit()
     return conn
 
@@ -42,24 +41,37 @@ def cache_embeddings(embeddings: List[ImageEmbedding], model_name: str) -> None:
 
     db_path = _get_cache_db(model_name)
 
+    valid_data_rows = []
+
+    for emb in embeddings:
+        try:
+            cache_key = _compute_cache_key(emb.path)
+
+            path_bytes = str(emb.path.absolute()).encode(errors="surrogateescape")
+
+            embedding_blob = emb.embedding.tobytes()
+
+            valid_data_rows.append((cache_key, path_bytes, embedding_blob))
+
+        except Exception as e:
+            print(
+                f"Warning: Skipping cache for file '{emb.path.name}' due to preparation error: {e}"
+            )
+            continue
+
+    if not valid_data_rows:
+        return
+
     try:
         conn = _init_db(db_path)
-        data = [
-            (
-                _compute_cache_key(emb.path),
-                str(emb.path.absolute()),
-                emb.embedding.tobytes(),
-            )
-            for emb in embeddings
-        ]
         conn.executemany(
             "INSERT OR REPLACE INTO embeddings (cache_key, path, embedding) VALUES (?, ?, ?)",
-            data,
+            valid_data_rows,
         )
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Warning: Failed to cache batch of embeddings: {e}")
+        print(f"Warning: Failed to execute cache transaction for batch: {e}")
 
 
 def load_cached_embeddings(
@@ -69,7 +81,13 @@ def load_cached_embeddings(
 
     path_to_key = {}
     for path in paths:
-        path_to_key[_compute_cache_key(path)] = path
+        try:
+            path_to_key[_compute_cache_key(path)] = path
+        except Exception as e:
+            print(
+                f"Warning: Skipping file '{path.name}' during cache lookup due to error: {e}"
+            )
+            continue
 
     if not path_to_key:
         return {}
