@@ -1,17 +1,44 @@
-import sys
 from pathlib import Path
-
-from .embeddings import load_model
-from .core import run_search_pipeline
+import click
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: vism <dir> <query_image>")
-        sys.exit(1)
+class CustomGroup(click.Group):
+    def invoke(self, ctx: click.Context) -> None:
+        if ctx.invoked_subcommand is None:
+            click.echo(ctx.get_help())
+            ctx.exit()
+        return super().invoke(ctx)
 
-    source_dir = Path(sys.argv[1])
-    query = Path(sys.argv[2])
+
+@click.group(
+    cls=CustomGroup,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    invoke_without_command=True,
+)
+@click.pass_context
+def vism(_: click.Context) -> None:
+    """vism: Visual Search CLI"""
+    pass
+
+
+@vism.command()
+@click.argument(
+    "source_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@click.argument("query", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "-k",
+    "--limit",
+    default=10,
+    type=int,
+    help="Number of top matches to return",
+)
+def search(source_dir: Path, query: Path, limit: int) -> None:
+    """
+    Search for images similar to query image in source directory
+    """
+    from .embeddings import load_model
+    from .core import run_search_pipeline
 
     model_name = "dinov2_vits14"
     model = load_model(model_name)
@@ -21,15 +48,19 @@ def main():
         query=query,
         model=model,
         model_name=model_name,
-        k=10,
+        k=limit,
     )
 
     if results:
-        print("\nTop matches:")
+        click.echo("\nTop matches:")
         for result in results:
-            print(f"{result.score:.4f} → {result.path}")
+            click.echo(f"{result.score:.4f} → {result.path}")
     else:
-        print("Search failed or returned no results")
+        click.echo("Search failed or returned no results")
+
+
+def main() -> None:
+    vism()
 
 
 if __name__ == "__main__":
