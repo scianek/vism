@@ -20,7 +20,13 @@ def vism():
     type=int,
     help="Number of top matches to return",
 )
-def search(source_dir: Path, query: Path, limit: int) -> None:
+@click.option(
+    "--open-with",
+    type=str,
+    default=None,
+    help="Open results with specified application",
+)
+def search(source_dir: Path, query: Path, limit: int, open_with: str) -> None:
     """
     Search for images similar to query image in source directory
     """
@@ -42,6 +48,15 @@ def search(source_dir: Path, query: Path, limit: int) -> None:
         click.echo("\nTop matches:")
         for result in results:
             click.echo(f"{result.score:.4f} → {result.path}")
+        if limit > 0 and results and open_with:
+            import subprocess
+
+            subprocess.Popen(
+                [open_with] + [str(res.path) for res in results],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
     else:
         click.echo("Search failed or returned no results")
 
