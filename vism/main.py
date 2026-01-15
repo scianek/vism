@@ -1,11 +1,41 @@
 from pathlib import Path
 import click
+import logging
+import sys
+
+
+def setup_logging(verbose: bool, quiet: bool) -> None:
+    """Configure logging based on verbosity flags"""
+    if quiet:
+        level = logging.ERROR
+    elif verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(message)s",
+        stream=sys.stderr,
+    )
 
 
 @click.group(no_args_is_help=True)
-def vism():
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable debug output"
+)
+@click.option(
+    "-q",
+    "--quiet",
+    is_flag=True,
+    default=False,
+    help="Suppress all output except errors",
+)
+@click.pass_context
+def vism(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     """vism: Visual Search CLI"""
-    pass
+    ctx.ensure_object(dict)
+    setup_logging(verbose, quiet)
 
 
 @vism.command(no_args_is_help=True)

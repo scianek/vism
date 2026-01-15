@@ -1,14 +1,17 @@
 import faiss
 import numpy as np
 from typing import List
+import logging
 from .types import ImageEmbedding, SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 def build_index(items: List[ImageEmbedding]) -> faiss.IndexFlatIP:
     vectors = np.stack([it.embedding for it in items])
     index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors.astype("float32"))  # type: ignore
-    print(f"FAISS index built with {index.ntotal} vectors")
+    logger.debug(f"FAISS index built with {index.ntotal} vectors")
     return index
 
 

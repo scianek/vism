@@ -7,13 +7,17 @@ from .images import load_image, find_images_recursive
 from .embeddings import Model, encode_image, encode_images
 from .search import build_index, search_items
 from tqdm import tqdm
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def run_search_pipeline(
     source_dir: Path, query: Path, model: Model, model_name: str, k: int = 10
 ) -> List[SearchResult]:
     image_paths = list(find_images_recursive(source_dir))
-    print(f"Found {len(image_paths)} images")
+    logger.info(f"Found {len(image_paths)} images")
 
     embeddings = get_or_compute_embeddings(
         image_paths,
@@ -21,14 +25,14 @@ def run_search_pipeline(
         model_name,
     )
 
-    print("Building search index...")
+    logger.debug("Building search index...")
     index = build_index(embeddings)
 
-    print("Encoding query image...")
+    logger.debug("Encoding query image...")
     try:
         query_img = load_image(query)
     except Exception as e:
-        print(f"Failed to load query image: {e}")
+        logger.error(f"Failed to load query image: {e}")
         sys.exit(1)
     query_embedding = encode_image(query_img, model)
     return search_items(index, query_embedding, embeddings, k=k)
@@ -42,18 +46,18 @@ def get_or_compute_embeddings(
     embeddings = []
     batch_size = 64
 
-    print("Loading cached embeddings...")
+    logger.debug("Loading cached embeddings...")
     cached = load_cached_embeddings(
         image_paths,
         model_name,
     )
     embeddings = [cached.get(p) for p in image_paths]
-    print(f"Cache hits: {len(cached)}/{len(image_paths)}")
+    logger.info(f"Cache hits: {len(cached)}/{len(image_paths)}")
 
     uncached_indices = [i for i, emb in enumerate(embeddings) if emb is None]
 
     if uncached_indices:
-        print(f"Processing {len(uncached_indices)} uncached images...")
+        logger.info(f"Processing {len(uncached_indices)} uncached images...")
         for batch_start in tqdm(
             range(0, len(uncached_indices), batch_size), desc="Encoding"
         ):
@@ -67,7 +71,7 @@ def get_or_compute_embeddings(
                     imgs.append(img)
                     valid_indices.append(idx)
                 except Exception as e:
-                    print(f"Failed to load image {path}: {e}")
+                    logger.error(f"Failed to load image {path}: {e}")
             if imgs:
                 batch_embeddings = encode_images(imgs, model)
                 for idx, emb in zip(valid_indices, batch_embeddings):

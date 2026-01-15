@@ -3,7 +3,10 @@ import hashlib
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
+import logging
 from .types import ImageEmbedding
+
+logger = logging.getLogger(__name__)
 
 
 def _get_cache_db(model_name: str) -> Path:
@@ -53,8 +56,8 @@ def cache_embeddings(embeddings: List[ImageEmbedding], model_name: str) -> None:
             valid_data_rows.append((cache_key, path_bytes, embedding_blob))
 
         except Exception as e:
-            print(
-                f"Warning: Skipping cache for file '{emb.path.name}' due to preparation error: {e}"
+            logger.warning(
+                f"Skipping cache for file '{emb.path.name}' due to preparation error: {e}"
             )
             continue
 
@@ -70,7 +73,7 @@ def cache_embeddings(embeddings: List[ImageEmbedding], model_name: str) -> None:
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Warning: Failed to execute cache transaction for batch: {e}")
+        logger.warning(f"Failed to execute cache transaction for batch: {e}")
 
 
 def load_cached_embeddings(
@@ -83,8 +86,8 @@ def load_cached_embeddings(
         try:
             path_to_key[_compute_cache_key(path)] = path
         except Exception as e:
-            print(
-                f"Warning: Skipping file '{path.name}' during cache lookup due to error: {e}"
+            logger.warning(
+                f"Skipping file '{path.name}' during cache lookup due to error: {e}"
             )
             continue
 
@@ -108,5 +111,5 @@ def load_cached_embeddings(
         conn.close()
         return results
     except Exception as e:
-        print(f"Warning: Failed to load cached embeddings: {e}")
+        logger.warning(f"Failed to load cached embeddings: {e}")
         return {}

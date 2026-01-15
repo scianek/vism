@@ -2,14 +2,17 @@ import torch
 import numpy as np
 from typing import List, Tuple, cast
 from torchvision import transforms
+import logging
 from .types import ImageData, ImageEmbedding
+
+logger = logging.getLogger(__name__)
 
 Model = Tuple[torch.nn.Module, transforms.Compose, str]
 
 
 def load_model(name: str) -> Model:
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading DINOv2 {name} → {device}")
+    logger.debug(f"Loading DINOv2 {name} → {device}")
     model = cast(torch.nn.Module, torch.hub.load("facebookresearch/dinov2", name))
     model.eval()
     model = model.to(device)
