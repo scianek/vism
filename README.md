@@ -40,9 +40,10 @@ vism search [OPTIONS]
 **Options:**
 
 - `-k`, `--limit` - Number of top matches to return (default: `10`)
+- `-o`, `--open-with` - Open results with the specified program
 
 **Example:**
 
 ```bash
-vism search ~/photos/ ~/query-photo.jpg -k 5
+vism search ~/photos/ ~/query-photo.jpg -k 5 -o imv
 ```
