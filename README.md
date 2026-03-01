@@ -39,11 +39,12 @@ vism search [OPTIONS]
 
 **Options:**
 
+- `-m`, `--model` - DINOv2 model variant: `dinov2_vits14` (default), `dinov2_vitb14`, `dinov2_vitl14`, `dinov2_vitg14`
 - `-k`, `--limit` - Number of top matches to return (default: `10`)
-- `-o`, `--open-with` - Open results with the specified program
+- `-o`, `--open-with` - Open results with specified application
 
 **Example:**
 
 ```bash
-vism search ~/photos/ ~/query-photo.jpg -k 5 -o imv
+vism search ~/photos/ ~/query-photo.jpg -k 5 -o imv -m dinov2_vitl14
 ```

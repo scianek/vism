@@ -3,6 +3,9 @@ import click
 import logging
 import sys
 
+MODEL_CHOICES = ["dinov2_vits14", "dinov2_vitb14", "dinov2_vitl14", "dinov2_vitg14"]
+DEFAULT_MODEL = "dinov2_vits14"
+
 
 def setup_logging(verbose: bool, quiet: bool) -> None:
     """Configure logging based on verbosity flags"""
@@ -44,6 +47,14 @@ def vism(ctx: click.Context, verbose: bool, quiet: bool) -> None:
 )
 @click.argument("query", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option(
+    "-m",
+    "--model",
+    default=DEFAULT_MODEL,
+    type=click.Choice(MODEL_CHOICES),
+    show_default=True,
+    help="DINOv2 model variant to use for embeddings",
+)
+@click.option(
     "-k",
     "--limit",
     default=10,
@@ -57,21 +68,22 @@ def vism(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     default=None,
     help="Open results with specified application",
 )
-def search(source_dir: Path, query: Path, limit: int, open_with: str) -> None:
+def search(
+    source_dir: Path, query: Path, model: str, limit: int, open_with: str
+) -> None:
     """
     Search for images similar to query image in source directory
     """
     from .embeddings import load_model
     from .core import run_search_pipeline
 
-    model_name = "dinov2_vits14"
-    model = load_model(model_name)
+    loaded_model = load_model(model)
 
     results = run_search_pipeline(
         source_dir=source_dir,
         query=query,
-        model=model,
-        model_name=model_name,
+        model=loaded_model,
+        model_name=model,
         k=limit,
     )
 
