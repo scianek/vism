@@ -60,6 +60,26 @@ Pre-compute and cache embeddings for all images in a directory without running a
 vism index ~/photos/
 ```
 
+### dupes
+
+```bash
+vism dupes <source_dir> [OPTIONS]
+```
+
+Find clusters of near-duplicate images in a directory.
+
+**Options:**
+
+- `-m`, `--model` - DINOv2 model variant (default: `dinov2_vits14`)
+- `-t`, `--threshold` - Similarity threshold for grouping (default: `0.95`)
+- `-o`, `--open-with` - Open each cluster with the specified application
+
+**Example:**
+
+```bash
+vism dupes ~/photos/ --threshold 0.97 -o imv
+```
+
 ### cache
  
 Manage the local embeddings cache.

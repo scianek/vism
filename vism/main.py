@@ -131,6 +131,81 @@ def index(source_dir: Path, model: str) -> None:
     click.echo(f"Done. {len(embeddings)} embeddings ready.")
 
 
+@vism.command(no_args_is_help=True)
+@click.argument(
+    "source_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@click.option(
+    "-m",
+    "--model",
+    default=DEFAULT_MODEL,
+    type=click.Choice(MODEL_CHOICES),
+    show_default=True,
+    help="DINOv2 model variant to use for embeddings",
+)
+@click.option(
+    "-t",
+    "--threshold",
+    default=0.95,
+    type=float,
+    show_default=True,
+    help="Similarity threshold for grouping images (0.0-1.0)",
+)
+@click.option(
+    "-o",
+    "--open-with",
+    type=str,
+    default=None,
+    help="Open each cluster with the specified application",
+)
+def dupes(
+    source_dir: Path, model: str, threshold: float, open_with: str | None
+) -> None:
+    """Find clusters of near-duplicate images in a directory"""
+    from .embeddings import load_model
+    from .core import get_or_compute_embeddings
+    from .images import find_images_recursive
+    from .dupes import find_duplicates
+
+    image_paths = list(find_images_recursive(source_dir))
+    click.echo(f"Found {len(image_paths)} images")
+
+    if len(image_paths) < 2:
+        click.echo("Need at least 2 images to find duplicates")
+        return
+
+    loaded_model = load_model(model)
+    embeddings = get_or_compute_embeddings(image_paths, loaded_model, model)
+
+    click.echo("Finding duplicates...")
+    clusters = find_duplicates(embeddings, threshold=threshold)
+
+    if not clusters:
+        click.echo("No duplicates found")
+        return
+
+    total = sum(len(c) for c in clusters)
+    click.echo(
+        f"\nFound {len(clusters)} cluster{'s' if len(clusters) != 1 else ''} ({total} images):\n"
+    )
+
+    for i, cluster in enumerate(clusters, 1):
+        click.echo(f"Cluster {i} ({len(cluster)} images):")
+        for path, score in cluster:
+            click.echo(f"  {score:.4f}  {path}")
+        click.echo()
+
+        if open_with:
+            import subprocess
+
+            subprocess.Popen(
+                [open_with] + [str(path) for path, _ in cluster],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+
 @vism.group(no_args_is_help=True)
 def cache() -> None:
     """Manage the embeddings cache"""
