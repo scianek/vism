@@ -2,13 +2,17 @@ from pathlib import Path
 import sys
 from typing import List
 from .types import ImageEmbedding, SearchResult
-from .cache import load_cached_embeddings, cache_embeddings
+from .cache import (
+    load_cached_embeddings,
+    cache_embeddings,
+    load_failed_paths,
+    mark_failed,
+)
 from .images import load_image, find_images_recursive
 from .embeddings import Model, encode_image, encode_images
 from .search import build_index, search_items
 from tqdm import tqdm
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +55,17 @@ def get_or_compute_embeddings(
         image_paths,
         model_name,
     )
+    failed = load_failed_paths(image_paths, model_name)
+    if failed:
+        logger.info(f"Skipping {len(failed)} previously failed images")
     embeddings = [cached.get(p) for p in image_paths]
     logger.info(f"Cache hits: {len(cached)}/{len(image_paths)}")
 
-    uncached_indices = [i for i, emb in enumerate(embeddings) if emb is None]
+    uncached_indices = [
+        i
+        for i, (emb, path) in enumerate(zip(embeddings, image_paths))
+        if emb is None and path not in failed
+    ]
 
     if uncached_indices:
         logger.info(f"Processing {len(uncached_indices)} uncached images...")
@@ -72,6 +83,7 @@ def get_or_compute_embeddings(
                     valid_indices.append(idx)
                 except Exception as e:
                     logger.error(f"Failed to load image {path}: {e}")
+                    mark_failed(path, model_name)
             if imgs:
                 batch_embeddings = encode_images(imgs, model)
                 for idx, emb in zip(valid_indices, batch_embeddings):

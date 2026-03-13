@@ -41,6 +41,13 @@ def _init_db(db_path: Path) -> sqlite3.Connection:
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_path ON embeddings(path)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS failed (
+            cache_key TEXT PRIMARY KEY,
+            path BLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     return conn
 
@@ -133,6 +140,54 @@ def load_cached_embeddings(
     except Exception as e:
         logger.warning(f"Failed to load cached embeddings: {e}")
         return {}
+
+
+def mark_failed(path: Path, model_name: str) -> None:
+    """Record a path as permanently failed so it is skipped on future runs"""
+    db_path = _get_cache_db(model_name)
+    try:
+        cache_key = _compute_cache_key(path)
+        path_bytes = str(path.absolute()).encode(errors="surrogateescape")
+        conn = _init_db(db_path)
+        conn.execute(
+            "INSERT OR REPLACE INTO failed (cache_key, path) VALUES (?, ?)",
+            (cache_key, path_bytes),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Failed to record failed path '{path.name}': {e}")
+
+
+def load_failed_paths(paths: List[Path], model_name: str) -> set[Path]:
+    """Return the subset of paths that are recorded as failed"""
+    db_path = _get_cache_db(model_name)
+    if not db_path.exists():
+        return set()
+
+    path_to_key: dict[str, Path] = {}
+    for path in paths:
+        try:
+            path_to_key[_compute_cache_key(path)] = path
+        except Exception:
+            continue
+
+    if not path_to_key:
+        return set()
+
+    try:
+        conn = sqlite3.connect(db_path)
+        placeholders = ",".join("?" * len(path_to_key))
+        cursor = conn.execute(
+            f"SELECT cache_key FROM failed WHERE cache_key IN ({placeholders})",
+            tuple(path_to_key.keys()),
+        )
+        result = {path_to_key[row[0]] for row in cursor}
+        conn.close()
+        return result
+    except Exception as e:
+        logger.warning(f"Failed to load failed paths: {e}")
+        return set()
 
 
 def clear_cache(model_name: Optional[str] = None, prefix: Optional[Path] = None) -> int:
