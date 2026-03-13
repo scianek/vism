@@ -46,6 +46,20 @@ vism search <source_dir> <query_image> [OPTIONS]
 vism search ~/photos/ ~/query-photo.jpg -k 5 -o imv -m dinov2_vitl14
 ```
  
+### index
+
+```bash
+vism index <source_dir> [-m MODEL]
+```
+
+Pre-compute and cache embeddings for all images in a directory without running a search. Useful for indexing a new photo library in the background so subsequent searches are instant.
+
+**Example:**
+
+```bash
+vism index ~/photos/
+```
+
 ### cache
  
 Manage the local embeddings cache.

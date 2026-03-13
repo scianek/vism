@@ -105,6 +105,32 @@ def search(
         click.echo("Search failed or returned no results")
 
 
+@vism.command(no_args_is_help=True)
+@click.argument(
+    "source_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@click.option(
+    "-m",
+    "--model",
+    default=DEFAULT_MODEL,
+    type=click.Choice(MODEL_CHOICES),
+    show_default=True,
+    help="DINOv2 model variant to use for embeddings",
+)
+def index(source_dir: Path, model: str) -> None:
+    """Pre-compute and cache embeddings for all images in a directory"""
+    from .embeddings import load_model
+    from .core import get_or_compute_embeddings
+    from .images import find_images_recursive
+
+    image_paths = list(find_images_recursive(source_dir))
+    click.echo(f"Found {len(image_paths)} images")
+
+    loaded_model = load_model(model)
+    embeddings = get_or_compute_embeddings(image_paths, loaded_model, model)
+    click.echo(f"Done. {len(embeddings)} embeddings ready.")
+
+
 @vism.group(no_args_is_help=True)
 def cache() -> None:
     """Manage the embeddings cache"""
