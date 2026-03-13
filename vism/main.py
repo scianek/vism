@@ -2,6 +2,7 @@ from pathlib import Path
 import click
 import logging
 import sys
+from typing import Optional
 
 MODEL_CHOICES = ["dinov2_vits14", "dinov2_vitb14", "dinov2_vitl14", "dinov2_vitg14"]
 DEFAULT_MODEL = "dinov2_vits14"
@@ -102,6 +103,81 @@ def search(
             )
     else:
         click.echo("Search failed or returned no results")
+
+
+@vism.group(no_args_is_help=True)
+def cache() -> None:
+    """Manage the embeddings cache"""
+    pass
+
+
+@cache.command()
+@click.argument("prefix", required=False, default=None, type=click.Path(path_type=Path))
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    type=click.Choice(MODEL_CHOICES),
+    help="Target a specific model's cache (default: all models)",
+)
+def clear(prefix: Optional[Path], model: Optional[str]) -> None:
+    """Remove cache entries. Optionally filter by path prefix and/or model"""
+    from .cache import clear_cache
+
+    deleted = clear_cache(model_name=model, prefix=prefix)
+    click.echo(f"Cleared {deleted} cache entr{'y' if deleted == 1 else 'ies'}")
+
+
+@cache.command()
+@click.argument("prefix", required=False, default=None, type=click.Path(path_type=Path))
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    type=click.Choice(MODEL_CHOICES),
+    help="Target a specific model's cache (default: all models)",
+)
+def prune(prefix: Optional[Path], model: Optional[str]) -> None:
+    """Remove entries for files that no longer exist on disk"""
+    from .cache import prune_cache
+
+    pruned = prune_cache(model_name=model, prefix=prefix)
+    click.echo(f"Pruned {pruned} dangling cache entr{'y' if pruned == 1 else 'ies'}")
+
+
+@cache.command()
+@click.argument("prefix", required=False, default=None, type=click.Path(path_type=Path))
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    type=click.Choice(MODEL_CHOICES),
+    help="Target a specific model's cache (default: all models)",
+)
+def stats(prefix: Optional[Path], model: Optional[str]) -> None:
+    """Show cache stats. Without PREFIX shows totals per model; with PREFIX shows coverage per subdirectory"""
+    from .cache import stats_cache_global, stats_cache_prefix
+
+    if prefix is None:
+        data = stats_cache_global(model_name=model)
+        if not data:
+            click.echo("No cache entries found")
+            return
+        for model_name, count in sorted(data.items()):
+            click.echo(f"{model_name}: {count} entries")
+    else:
+        data = stats_cache_prefix(prefix=prefix, model_name=model)
+        if not data:
+            click.echo("No cache entries found")
+            return
+        for model_name, counts in sorted(data.items()):
+            total_cached = sum(c for c, _ in counts.values())
+            total_images = sum(t for _, t in counts.values())
+            click.echo(f"\n{model_name} ({total_cached}/{total_images} total):")
+            for directory, (cached, total) in sorted(
+                counts.items(), key=lambda x: -x[1][0]
+            ):
+                click.echo(f"  {cached:>6}/{total:<6}  {directory}")
 
 
 def main() -> None:
