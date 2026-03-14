@@ -123,18 +123,19 @@ def load_cached_embeddings(
 
     try:
         conn = sqlite3.connect(db_path)
-        placeholders = ",".join("?" * len(path_to_key))
-        cursor = conn.execute(
-            f"SELECT cache_key, embedding FROM embeddings WHERE cache_key IN ({placeholders})",
-            tuple(path_to_key.keys()),
-        )
-
         results = {}
-        for cache_key, embedding_blob in cursor:
-            path = path_to_key[cache_key]
-            embedding_array = np.frombuffer(embedding_blob, dtype=np.float32)
-            results[path] = ImageEmbedding(path=path, embedding=embedding_array)
-
+        keys = list(path_to_key.keys())
+        for batch_start in range(0, len(keys), 999):
+            batch = keys[batch_start : batch_start + 999]
+            placeholders = ",".join("?" * len(batch))
+            cursor = conn.execute(
+                f"SELECT cache_key, embedding FROM embeddings WHERE cache_key IN ({placeholders})",
+                batch,
+            )
+            for cache_key, embedding_blob in cursor:
+                path = path_to_key[cache_key]
+                embedding_array = np.frombuffer(embedding_blob, dtype=np.float32)
+                results[path] = ImageEmbedding(path=path, embedding=embedding_array)
         conn.close()
         return results
     except Exception as e:
@@ -177,12 +178,16 @@ def load_failed_paths(paths: List[Path], model_name: str) -> set[Path]:
 
     try:
         conn = sqlite3.connect(db_path)
-        placeholders = ",".join("?" * len(path_to_key))
-        cursor = conn.execute(
-            f"SELECT cache_key FROM failed WHERE cache_key IN ({placeholders})",
-            tuple(path_to_key.keys()),
-        )
-        result = {path_to_key[row[0]] for row in cursor}
+        keys = list(path_to_key.keys())
+        result = set()
+        for batch_start in range(0, len(keys), 999):
+            batch = keys[batch_start : batch_start + 999]
+            placeholders = ",".join("?" * len(batch))
+            cursor = conn.execute(
+                f"SELECT cache_key FROM failed WHERE cache_key IN ({placeholders})",
+                batch,
+            )
+            result.update(path_to_key[row[0]] for row in cursor)
         conn.close()
         return result
     except Exception as e:
