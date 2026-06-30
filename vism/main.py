@@ -4,7 +4,17 @@ import logging
 import sys
 from typing import Optional
 
-MODEL_CHOICES = ["dinov2_vits14", "dinov2_vitb14", "dinov2_vitl14", "dinov2_vitg14"]
+MODEL_CHOICES = [
+    "dinov2_vits14",
+    "dinov2_vitb14",
+    "dinov2_vitl14",
+    "dinov2_vitg14",
+    "clip_ViT-B-32_openai",
+    "clip_ViT-B-16_openai",
+    "clip_ViT-L-14_openai",
+    "clip_ViT-B-32_laion2b_s34b_b79k",
+    "clip_ViT-H-14_laion2b_s32b_b79k",
+]
 DEFAULT_MODEL = "dinov2_vits14"
 
 
@@ -53,7 +63,7 @@ def vism(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     default=DEFAULT_MODEL,
     type=click.Choice(MODEL_CHOICES),
     show_default=True,
-    help="DINOv2 model variant to use for embeddings",
+    help="Model variant to use for embeddings",
 )
 @click.option(
     "-k",
@@ -115,7 +125,7 @@ def search(
     default=DEFAULT_MODEL,
     type=click.Choice(MODEL_CHOICES),
     show_default=True,
-    help="DINOv2 model variant to use for embeddings",
+    help="Model variant to use for embeddings",
 )
 def index(source_dir: Path, model: str) -> None:
     """Pre-compute and cache embeddings for all images in a directory"""
@@ -141,7 +151,7 @@ def index(source_dir: Path, model: str) -> None:
     default=DEFAULT_MODEL,
     type=click.Choice(MODEL_CHOICES),
     show_default=True,
-    help="DINOv2 model variant to use for embeddings",
+    help="Model variant to use for embeddings",
 )
 @click.option(
     "-t",

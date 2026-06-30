@@ -1,11 +1,11 @@
 # vism - Visual Similarity Search CLI
 
-A command-line tool for finding visually similar images using DINOv2 embeddings and FAISS. Point it at a directory and a query image - it encodes everything with DINOv2, caches embeddings locally in SQLite, and returns the closest matches ranked by cosine similarity.
+A command-line tool for finding visually similar images using DINOv2 or CLIP embeddings and FAISS. Point it at a directory and a query image - it encodes everything with your chosen model, caches embeddings locally in SQLite, and returns the closest matches ranked by cosine similarity.
 
 ## Features
 
 - Recursive image discovery
-- DINOv2 embeddings for semantic visual similarity
+- DINOv2 and CLIP embeddings for semantic visual similarity
 - SQLite embedding cache - skips recomputation for unchanged files
 - FAISS inner-product index for fast nearest-neighbor search
 - GPU support if CUDA is available, otherwise CPU
@@ -36,7 +36,9 @@ vism search <source_dir> <query_image> [OPTIONS]
  
 **Options:**
 
-- `-m`, `--model` - DINOv2 model variant: `dinov2_vits14` (default), `dinov2_vitb14`, `dinov2_vitl14`, `dinov2_vitg14`
+- `-m`, `--model` - Model variant to use (default: `dinov2_vits14`). Available models:
+  - **DINOv2:** `dinov2_vits14`, `dinov2_vitb14`, `dinov2_vitl14`, `dinov2_vitg14`
+  - **CLIP:** `clip_ViT-B-32_openai`, `clip_ViT-B-16_openai`, `clip_ViT-L-14_openai`, `clip_ViT-B-32_laion2b_s34b_b79k`, `clip_ViT-H-14_laion2b_s32b_b79k`
 - `-k`, `--limit` - Number of top matches to return (default: `10`)
 - `-o`, `--open-with` - Open results with specified application
 
