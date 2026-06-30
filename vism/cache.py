@@ -9,16 +9,26 @@ from .types import ImageEmbedding
 logger = logging.getLogger(__name__)
 
 
+import os
+
+
+def _get_cache_dir() -> Path:
+    env_dir = os.environ.get("VISM_CACHE_DIR")
+    if env_dir:
+        return Path(env_dir)
+    return Path.home() / ".cache" / "vism"
+
+
 def _get_cache_db(model_name: str) -> Path:
     model_name = model_name.replace("/", "_").replace("\\", "_")
-    cache_dir = Path.home() / ".cache" / "vism"
+    cache_dir = _get_cache_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / f"{model_name}.db"
 
 
 def _get_all_cache_dbs() -> Dict[str, Path]:
     """Return all existing model cache dbs as {model_name: path}"""
-    cache_dir = Path.home() / ".cache" / "vism"
+    cache_dir = _get_cache_dir()
     if not cache_dir.exists():
         return {}
     return {p.stem: p for p in cache_dir.glob("*.db")}

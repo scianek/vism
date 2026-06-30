@@ -5,6 +5,7 @@ from pathlib import Path
 from vism.cache import (
     _compute_cache_key,
     _decode_path,
+    _get_cache_dir,
     cache_embeddings,
     load_cached_embeddings,
     clear_cache,
@@ -19,13 +20,26 @@ def make_embedding(path: Path, values: list[float]) -> ImageEmbedding:
     return ImageEmbedding(path=path, embedding=np.array(values, dtype=np.float32))
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def tmp_cache(tmp_path: Path, monkeypatch):
     """Redirect cache directory to a temp path"""
     cache_dir = tmp_path / ".cache" / "vism"
     cache_dir.mkdir(parents=True)
-    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("VISM_CACHE_DIR", str(cache_dir))
     return cache_dir
+
+
+def test_get_cache_dir_env(tmp_path: Path, monkeypatch):
+    custom_dir = tmp_path / "custom_cache"
+    monkeypatch.setenv("VISM_CACHE_DIR", str(custom_dir))
+    assert _get_cache_dir() == custom_dir
+
+
+def test_get_cache_dir_fallback(monkeypatch):
+    monkeypatch.delenv("VISM_CACHE_DIR", raising=False)
+    fake_home = Path("/fake/home")
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+    assert _get_cache_dir() == fake_home / ".cache" / "vism"
 
 
 # --- _compute_cache_key ---

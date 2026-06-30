@@ -118,6 +118,10 @@ All cache commands accept an optional `-m`/`--model` flag to target a specific m
  
 ## Embedding Cache
  
-Embeddings are cached in SQLite at `~/.cache/vism/<model>.db`. Cache keys are derived from the file path, size, and modification time - so the cache is automatically invalidated when a file changes.
+Embeddings are cached in SQLite. By default, they are stored at `~/.cache/vism/<model>.db`. 
+
+You can override this cache directory path by setting the `VISM_CACHE_DIR` environment variable (e.g., `VISM_CACHE_DIR=/path/to/custom/cache/dir`).
+
+Cache keys are derived from the file path, size, and modification time - so the cache is automatically invalidated when a file changes.
 
 Files that fail to load (corrupted or unsupported) are recorded in the cache and skipped on subsequent runs.
